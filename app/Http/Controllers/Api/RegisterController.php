@@ -16,7 +16,6 @@ class RegisterController extends Controller
     /**
      * Register api
      *
-     * @return \Illuminate\Http\Response
      */
     public function register(Request $request)
     {
@@ -34,26 +33,39 @@ class RegisterController extends Controller
         $input = $request->all();
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
-        $success['token'] = $user->createToken('MyApp')->plainTextToken;
-        $success['name'] = $user->name;
-        // $success['id'] =  $user->id;  la réponse lors de l'enregistrement peut aussi être l'id et le token
-        return response()->json([$success, "message" => 'User register successfully.']);
+        $success = [
+            'token' => $user->createToken('MyApp')->plainTextToken,
+            'name' => $user->name,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $success,
+            'message' => 'User register successfully.',
+        ], 201);
     }
 
 
     /**
      * Login api
      *
-     * @return \Illuminate\Http\Response
      */
     public function login(Request $request)
     {
         if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
-            $token = $request->user()->createToken($user->email . '_Token')->plainTextToken;
-            // $success['token'] = $user->createToken('MyApp')->plainTextToken;
-            $success['name'] = $user->name;
-            return response()->json([$success, "message" => 'User login successfully.']);
+
+            $token = $user->createToken($user->email . '_Token')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'token' => $token,
+                    'name' => $user->name,
+                ],
+                'message' => 'User login successfully.',
+            ]);
         } else {
             return $this->sendError('Unauthorised.', ['error' => 'Unauthorised']);
         }
