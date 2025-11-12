@@ -1,32 +1,164 @@
 <script setup lang="ts">
+import LoginForm from '@/components/forms/LoginForm.vue';
+import RegisterForm from '@/components/forms/RegisterForm.vue';
 import Header from '@/components/Header.vue';
+import ModalShell from '@/components/ModalShell.vue';
+import WordForm from '@/components/WordForm.vue';
+import WordList from '@/components/WordList.vue';
+import type { Word } from '@/types/word';
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
-
-type Word = {
-    word_id: string;
-    word: string;
-    pronunciation: string;
-    part_of_speech: string;
-    example: string;
-    meaning: string;
-    difficulty: string;
-};
+import { computed, onMounted, ref } from 'vue';
 
 const words = ref<Word[]>([]);
+const isLoading = ref(false);
+const errorMessage = ref('');
+const showRegisterModal = ref(false);
+const showLoginModal = ref(false);
+const showCreateWordModal = ref(false);
+const editingWord = ref<Word | null>(null);
+const toastMessage = ref('');
+const authToken = ref<string | null>(typeof window === 'undefined' ? null : window.localStorage.getItem('auth_token'));
+const isAuthenticated = computed(() => Boolean(authToken.value));
 
-function setWords(list: Word[]) {
+const setWords = (list: Word[]) => {
     words.value = list;
-}
+};
+
+const setToast = (message: string) => {
+    toastMessage.value = message;
+    setTimeout(() => {
+        toastMessage.value = '';
+    }, 3500);
+};
+
+const ensureAuthenticated = () => {
+    if (authToken.value) {
+        return true;
+    }
+
+    errorMessage.value = 'Please log in to continue.';
+    showLoginModal.value = true;
+    return false;
+};
+
 const fetchWords = async () => {
-    const { data } = await axios.get('/api/words');
-    setWords(data);
+    if (!authToken.value) {
+        words.value = [];
+        errorMessage.value = 'Please log in to see your words.';
+        return;
+    }
+
+    isLoading.value = true;
+    errorMessage.value = '';
+
+    try {
+        const { data } = await axios.get('/api/words');
+        const list: Word[] = data?.data?.data ?? [];
+        setWords(list);
+    } catch (error: any) {
+        if (error?.response?.status === 401) {
+            authToken.value = null;
+            delete axios.defaults.headers.common.Authorization;
+            words.value = [];
+            errorMessage.value = 'Session expired. Please log in again.';
+            showLoginModal.value = true;
+        } else {
+            errorMessage.value = error?.response?.data?.message ?? 'Failed to load words.';
+        }
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const openCreateWordModal = () => {
+    if (!ensureAuthenticated()) {
+        return;
+    }
+    showCreateWordModal.value = true;
+};
+
+const startEditing = (word: Word) => {
+    if (!ensureAuthenticated()) {
+        return;
+    }
+    editingWord.value = word;
+};
+
+const handleWordUpdated = (word: Word) => {
+    words.value = words.value.map((item) => (item.id === word.id ? word : item));
+    editingWord.value = null;
+    setToast('Word updated successfully.');
+};
+
+const handleWordCreated = (word: Word) => {
+    words.value = [word, ...words.value];
+    showCreateWordModal.value = false;
+    setToast('Word created successfully.');
+};
+
+const handleRegisterSuccess = () => {
+    showRegisterModal.value = false;
+    showLoginModal.value = true;
+    setToast('Account created. Please log in.');
+};
+
+const handleLoginSuccess = () => {
+    showLoginModal.value = false;
+    const token = window.localStorage.getItem('auth_token');
+    authToken.value = token;
+    if (token) {
+        axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+    }
+    fetchWords();
+    setToast('Logged in successfully.');
+};
+
+const deleteWord = async (word: Word) => {
+    if (!ensureAuthenticated()) {
+        return;
+    }
+
+    if (!window.confirm(`Delete "${word.word}"? This cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        await axios.delete(`/api/words/${word.id}`);
+        words.value = words.value.filter((item) => item.id !== word.id);
+        setToast('Word deleted successfully.');
+    } catch (error: any) {
+        if (error?.response?.status === 401) {
+            authToken.value = null;
+            delete axios.defaults.headers.common.Authorization;
+            showLoginModal.value = true;
+            errorMessage.value = 'Session expired. Please log in again.';
+        } else {
+            setToast('Unable to delete word.');
+        }
+    }
+};
+
+const handleLogout = () => {
+    showCreateWordModal.value = false;
+    editingWord.value = null;
+    authToken.value = null;
+    window.localStorage.removeItem('auth_token');
+    delete axios.defaults.headers.common.Authorization;
+    words.value = [];
+    errorMessage.value = 'You are logged out.';
+    setToast('Logged out successfully.');
 };
 
 onMounted(fetchWords);
 </script>
 <template>
-    <Header />
+    <Header
+        :is-authenticated="isAuthenticated"
+        @open-register="showRegisterModal = true"
+        @open-login="showLoginModal = true"
+        @open-create-word="openCreateWordModal"
+        @logout="handleLogout"
+    />
 
     <main class="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-white to-white px-4 py-16 text-slate-800">
         <div
@@ -34,27 +166,45 @@ onMounted(fetchWords);
         />
         <div class="pointer-events-none absolute -top-32 left-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-sky-100 blur-3xl" />
         <div class="pointer-events-none absolute right-16 -bottom-24 h-64 w-64 rounded-full bg-slate-200 blur-3xl" />
-        <section class="mx-20 flex flex-col gap-5">
-            <header class="mb-10 text-center">
-                <h1 class="mt-4 text-3xl leading-snug font-semibold text-slate-900 md:text-4xl">List of Words</h1>
-            </header>
-            <div v-for="word in words" :key="word.word_id" class="grid gap-6 md:grid-cols-3">
-                <card class="flex items-center justify-center rounded-2xl bg-slate-200 p-5">
-                    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-lg transition-shadow duration-300 hover:shadow-xl">
-                        <h1 class="mb-4 text-2xl font-bold text-gray-800">{{ word.word }}</h1>
-                        <p class="text-gray-600"><span class="font-semibold text-gray-700">Pronunciation:</span> {{ word.pronunciation }}</p>
-                        <p class="text-gray-600"><span class="font-semibold text-gray-700">Part of Speech:</span> {{ word.part_of_speech }}</p>
-                        <p class="text-gray-600"><span class="font-semibold text-gray-700">Example:</span> "{{ word.example }}"</p>
-                        <p class="text-gray-600"><span class="font-semibold text-gray-700">Meaning:</span> "{{ word.meaning }}"</p>
-                        <p class="text-gray-600"><span class="font-semibold text-gray-700">Difficulty:</span> "{{ word.difficulty }}"</p>
-                        <button
-                            class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-600 focus:ring-2 focus:ring-sky-400 focus:outline-none"
-                        >
-                            Edit
-                        </button>
-                    </div>
-                </card>
+        <section class="mx-auto flex w-full max-w-6xl flex-col gap-10">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-semibold text-slate-900">Vocabulary</h2>
+                <div class="flex items-center gap-4">
+                    <span v-if="!isAuthenticated" class="text-sm text-slate-500">Log in to add or edit your words.</span>
+                    <button
+                        type="button"
+                        :disabled="!isAuthenticated"
+                        class="rounded-full bg-sky-500 px-6 py-3 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-400"
+                        @click="openCreateWordModal"
+                    >
+                        Add new word
+                    </button>
+                </div>
             </div>
+            <WordList :words="words" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="deleteWord" />
         </section>
     </main>
+
+    <div
+        v-if="toastMessage"
+        class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900/90 px-6 py-3 text-sm font-semibold text-white shadow-xl"
+    >
+        {{ toastMessage }}
+    </div>
+
+    <ModalShell v-if="showRegisterModal" title="Create an account" @close="showRegisterModal = false">
+        <RegisterForm @registered="handleRegisterSuccess" />
+    </ModalShell>
+
+    <ModalShell v-if="showLoginModal" title="Welcome back" @close="showLoginModal = false">
+        <LoginForm @logged-in="handleLoginSuccess" />
+    </ModalShell>
+
+    <ModalShell v-if="showCreateWordModal" title="Add a new word" @close="showCreateWordModal = false">
+        <WordForm @word-created="handleWordCreated" />
+    </ModalShell>
+
+    <ModalShell v-if="editingWord" title="Edit word" @close="editingWord = null">
+        <WordForm mode="edit" :initial-word="editingWord" @word-updated="handleWordUpdated" @cancel="editingWord = null" />
+    </ModalShell>
 </template>

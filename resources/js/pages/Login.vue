@@ -1,5 +1,29 @@
 <script setup lang="ts">
 import Header from '@/components/Header.vue';
+import { router } from '@inertiajs/vue3';
+import axios from 'axios';
+import { reactive, ref } from 'vue';
+
+const fields = reactive({
+    email: '',
+    password: '',
+});
+const submitError = ref('');
+const isSubmitting = ref(false);
+
+const handleSubmit = async () => {
+    submitError.value = '';
+    isSubmitting.value = true;
+    try {
+        const response = await axios.post('/api/login', { ...fields });
+        localStorage.setItem('auth_token', response.data?.data?.token ?? '');
+        router.visit('/');
+    } catch (error: any) {
+        submitError.value = error?.response?.data?.message ?? 'Invalid credentials. Please try again.';
+    } finally {
+        isSubmitting.value = false;
+    }
+};
 </script>
 
 <template>
@@ -16,15 +40,16 @@ import Header from '@/components/Header.vue';
                 <h1 class="mt-4 text-3xl leading-snug font-semibold text-slate-900 md:text-4xl">Login</h1>
             </header>
 
-            <form class="grid gap-8" @submit.prevent="">
+            <form class="grid gap-8" @submit.prevent="handleSubmit">
                 <div class="grid gap-6 md:grid-cols-2">
                     <label
                         class="group relative flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-5 transition focus-within:border-sky-300 hover:border-sky-200"
                     >
-                        <span class="text-xs font-medium tracking-wider text-slate-400 uppercase">Username</span>
+                        <span class="text-xs font-medium tracking-wider text-slate-400 uppercase">Email</span>
                         <input
+                            v-model="fields.email"
                             type="text"
-                            placeholder="john doe"
+                            placeholder="john@example.com"
                             class="w-full bg-transparent text-lg font-semibold text-slate-900 transition duration-300 ease-out placeholder:text-slate-400 focus:outline-none"
                         />
                         <span
@@ -37,6 +62,7 @@ import Header from '@/components/Header.vue';
                     >
                         <span class="text-xs font-medium tracking-wider text-slate-400 uppercase">password</span>
                         <input
+                            v-model="fields.password"
                             type="password"
                             placeholder="******"
                             class="w-full bg-transparent text-lg font-semibold text-slate-900 transition duration-300 ease-out placeholder:text-slate-400 focus:outline-none"
@@ -47,12 +73,18 @@ import Header from '@/components/Header.vue';
                     </label>
                 </div>
 
-                <div class="flex items-center justify-center rounded-2xl bg-white px-6 py-5">
+                <p class="text-center text-sm text-red-600" v-if="submitError">{{ submitError }}</p>
+
+                <div class="flex flex-col items-center gap-4 rounded-2xl bg-white px-6 py-5">
                     <button
                         type="submit"
-                        class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none"
+                        :disabled="isSubmitting"
+                        class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300"
                     >
-                        Save Word
+                        {{ isSubmitting ? 'Signing in...' : 'Login' }}
+                    </button>
+                    <button type="button" class="text-sm font-semibold text-sky-600 hover:underline" @click="router.visit('/register')">
+                        Need an account? Register
                     </button>
                 </div>
             </form>

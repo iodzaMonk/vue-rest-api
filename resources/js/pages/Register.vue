@@ -1,18 +1,36 @@
 <script setup lang="ts">
 import Header from '@/components/Header.vue';
-import { reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
+import axios from 'axios';
+import { reactive, ref } from 'vue';
 
 const fields = reactive({
-    username: '',
+    name: '',
     email: '',
     password: '',
     c_password: '',
 });
+const isSubmitting = ref(false);
+const submitError = ref('');
 
-const handleSubmit = () => {
-    console.log('Vocabulary entry', {
-        ...fields,
-    });
+const handleSubmit = async () => {
+    submitError.value = '';
+    isSubmitting.value = true;
+    try {
+        const payload = {
+            name: fields.name,
+            email: fields.email,
+            password: fields.password,
+            c_password: fields.c_password,
+        };
+
+        await axios.post('/api/register', payload);
+        router.visit('/login');
+    } catch (error: any) {
+        submitError.value = error?.response?.data?.message ?? 'Unable to register. Please try again.';
+    } finally {
+        isSubmitting.value = false;
+    }
 };
 </script>
 
@@ -35,9 +53,9 @@ const handleSubmit = () => {
                     <label
                         class="group relative flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-5 transition focus-within:border-sky-300 hover:border-sky-200"
                     >
-                        <span class="text-xs font-medium tracking-wider text-slate-400 uppercase">username</span>
+                        <span class="text-xs font-medium tracking-wider text-slate-400 uppercase">name</span>
                         <input
-                            v-model="fields.username"
+                            v-model="fields.name"
                             type="text"
                             placeholder="santa_claus"
                             class="w-full bg-transparent text-lg font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none"
@@ -96,12 +114,18 @@ const handleSubmit = () => {
                     </label>
                 </div>
 
+                <p class="text-center text-sm text-red-600" v-if="submitError">{{ submitError }}</p>
+
                 <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5">
                     <button
                         type="submit"
-                        class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none"
+                        :disabled="isSubmitting"
+                        class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300"
                     >
-                        Register account
+                        {{ isSubmitting ? 'Submitting...' : 'Register account' }}
+                    </button>
+                    <button type="button" class="text-sm font-semibold text-sky-600 hover:underline" @click="router.visit('/login')">
+                        Already have an account? Login
                     </button>
                 </div>
             </form>

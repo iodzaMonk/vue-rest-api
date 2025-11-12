@@ -3,21 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ApiResponse;
+use App\Http\Controllers\Api\Concerns\ValidatesCaptcha;
 use App\Http\Controllers\Controller;
 use App\Models\Word;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class WordController extends Controller
 {
     use ApiResponse;
+    use ValidatesCaptcha;
 
     /**
-     * Display a listing of the resource.
+     * Display a listing of the authenticated user's words.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $words = Word::latest()->paginate(10);
+        $words = $request->user()->words()->latest()->paginate(10);
 
         return $this->sendResponse($words, 'Words retrieved successfully.');
     }
@@ -35,13 +38,19 @@ class WordController extends Controller
             'example_sentence' => 'required|string',
             'difficulty' => 'required|in:easy,medium,hard',
             'image' => 'nullable|image',
+            'captcha_token' => 'required|string',
+            'captcha_answer' => 'required|string',
         ]);
 
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('images/upload', 'public');
+        if (!$this->validateCaptcha($request)) {
+            return $this->sendError('Invalid captcha.', [], 422);
         }
 
-        $word = Word::create($validated);
+        unset($validated['captcha_token'], $validated['captcha_answer']);
+
+        $validated['image'] = $this->handleImageUpload($request);
+
+        $word = $request->user()->words()->create($validated);
 
         return response()->json([
             'success' => true,
@@ -53,9 +62,9 @@ class WordController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $word = Word::find($id);
+        $word = $request->user()->words()->find($id);
 
         if (!$word) {
             return $this->sendError('Word not found.');
@@ -69,7 +78,7 @@ class WordController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $word = Word::findOrFail($id);
+        $word = $request->user()->words()->findOrFail($id);
 
         $validated = $request->validate([
             'word' => 'required|string|max:255',
@@ -79,15 +88,10 @@ class WordController extends Controller
             'example_sentence' => 'required|string',
             'difficulty' => 'required|in:easy,medium,hard',
             'image' => 'nullable|image',
+            'remove_image' => 'nullable|boolean',
         ]);
 
-        if ($request->hasFile('image')) {
-            if ($word->image) {
-                Storage::disk('public')->delete($word->image);
-            }
-
-            $validated['image'] = $request->file('image')->store('images/upload', 'public');
-        }
+        $validated['image'] = $this->handleImageUpload($request, $word, $request->boolean('remove_image'));
 
         $word->update($validated);
 
@@ -97,12 +101,12 @@ class WordController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $word = Word::findOrFail($id);
+        $word = $request->user()->words()->findOrFail($id);
 
         if ($word->image) {
-            Storage::disk('public')->delete($word->image);
+            $this->deleteImage($word->image);
         }
 
         $word->delete();
@@ -111,5 +115,45 @@ class WordController extends Controller
             'success' => true,
             'message' => 'Word deleted successfully.',
         ], 200);
+    }
+
+    private function handleImageUpload(Request $request, ?Word $word = null, bool $removeExisting = false): ?string
+    {
+        if (!$request->hasFile('image')) {
+            if ($removeExisting && $word?->image) {
+                $this->deleteImage($word->image);
+                return null;
+            }
+
+            return $word?->image;
+        }
+
+        $file = $request->file('image');
+        $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $destination = public_path('img');
+
+        if (!File::exists($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
+
+        if ($word?->image) {
+            $this->deleteImage($word->image);
+        }
+
+        $file->move($destination, $filename);
+
+        return 'img/' . $filename;
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        $fullPath = public_path($path);
+        if (File::exists($fullPath)) {
+            File::delete($fullPath);
+        }
     }
 }
