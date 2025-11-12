@@ -43,13 +43,14 @@ const imageUrl = (path?: string | null) => {
             >
                 <div v-if="imageUrl(word.image)" class="relative h-48 w-full overflow-hidden bg-slate-100">
                     <img :src="imageUrl(word.image)" :alt="`Image for ${word.word}`" class="h-full w-full object-cover" />
-                    <span
-                        class="absolute left-4 top-4 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase text-slate-700 shadow"
-                    >
+                    <span class="absolute top-4 left-4 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700 uppercase shadow">
                         {{ word.difficulty }}
                     </span>
                 </div>
-                <div v-else class="flex h-48 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-5xl font-bold text-slate-400">
+                <div
+                    v-else
+                    class="flex h-48 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-5xl font-bold text-slate-400"
+                >
                     {{ word.word.charAt(0).toUpperCase() }}
                 </div>
                 <div class="flex flex-1 flex-col gap-4 p-6">

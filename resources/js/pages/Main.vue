@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import LoginForm from '@/components/forms/LoginForm.vue';
 import RegisterForm from '@/components/forms/RegisterForm.vue';
 import Header from '@/components/Header.vue';
@@ -17,6 +18,8 @@ const showLoginModal = ref(false);
 const showCreateWordModal = ref(false);
 const editingWord = ref<Word | null>(null);
 const toastMessage = ref('');
+const wordPendingDeletion = ref<Word | null>(null);
+const isDeleting = ref(false);
 const authToken = ref<string | null>(typeof window === 'undefined' ? null : window.localStorage.getItem('auth_token'));
 const isAuthenticated = computed(() => Boolean(authToken.value));
 
@@ -113,19 +116,25 @@ const handleLoginSuccess = () => {
     setToast('Logged in successfully.');
 };
 
-const deleteWord = async (word: Word) => {
+const requestDeleteWord = (word: Word) => {
     if (!ensureAuthenticated()) {
         return;
     }
+    wordPendingDeletion.value = word;
+};
 
-    if (!window.confirm(`Delete "${word.word}"? This cannot be undone.`)) {
+const confirmDeleteWord = async () => {
+    if (!wordPendingDeletion.value) {
         return;
     }
 
+    isDeleting.value = true;
+
     try {
-        await axios.delete(`/api/words/${word.id}`);
-        words.value = words.value.filter((item) => item.id !== word.id);
+        await axios.delete(`/api/words/${wordPendingDeletion.value.id}`);
+        words.value = words.value.filter((item) => item.id !== wordPendingDeletion.value?.id);
         setToast('Word deleted successfully.');
+        wordPendingDeletion.value = null;
     } catch (error: any) {
         if (error?.response?.status === 401) {
             authToken.value = null;
@@ -135,6 +144,8 @@ const deleteWord = async (word: Word) => {
         } else {
             setToast('Unable to delete word.');
         }
+    } finally {
+        isDeleting.value = false;
     }
 };
 
@@ -181,7 +192,7 @@ onMounted(fetchWords);
                     </button>
                 </div>
             </div>
-            <WordList :words="words" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="deleteWord" />
+            <WordList :words="words" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="requestDeleteWord" />
         </section>
     </main>
 
@@ -206,5 +217,17 @@ onMounted(fetchWords);
 
     <ModalShell v-if="editingWord" title="Edit word" @close="editingWord = null">
         <WordForm mode="edit" :initial-word="editingWord" @word-updated="handleWordUpdated" @cancel="editingWord = null" />
+    </ModalShell>
+
+    <ModalShell v-if="wordPendingDeletion" title="Delete word" @close="wordPendingDeletion = null">
+        <ConfirmDialog
+            :title="`Delete ${wordPendingDeletion.word}?`"
+            message="This action permanently removes the word and its image."
+            confirm-label="Delete"
+            cancel-label="Keep"
+            :loading="isDeleting"
+            @confirm="confirmDeleteWord"
+            @cancel="wordPendingDeletion = null"
+        />
     </ModalShell>
 </template>
