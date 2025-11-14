@@ -28,7 +28,7 @@ cleanup() {
     wait "${php_pid}" "${npm_pid}" 2>/dev/null || true
 }
 
-trap cleanup EXIT
+trap cleanup EXIT SIGINT SIGTERM
 
 wait -n
 exit_code=$?

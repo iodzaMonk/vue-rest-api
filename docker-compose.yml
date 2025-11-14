@@ -1,25 +1,54 @@
 services:
-  db:
-    image: 9.0-debian
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: languages
-      MYSQL_USERNAME: root
-      MYSQL_PASSWORD: root
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-    - "5000:5000"
-    volumes:
-    - "dict-db-data:/var/lib/mysql"
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    command: sh -c "npm install && composer install && npm run dev && php artisan serve --host=0.0.0.0 --port=5555"
+    container_name: vue-rest-api-app
+    command:
+      - /bin/bash
+      - docker/start-container.sh
     ports:
-        - "5555:5555"
+      - '8000:8000'
+      - '5173:5173'
+    environment:
+      APP_ENV: local
+      APP_DEBUG: 'true'
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: language
+      DB_USERNAME: language
+      DB_PASSWORD: 2YJemWrC6wpnfzwo
+      CHOKIDAR_USEPOLLING: 'true'
+      LARAVEL_PORT: 8000
+      VITE_PORT: 5173
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+      - vendor:/var/www/html/vendor
 
-  volumes:
-    dict-db-data:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: language
+      MYSQL_USER: language
+      MYSQL_PASSWORD: 2YJemWrC6wpnfzwo
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - '3306:3306'
+    volumes:
+      - dict-db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-proot']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+volumes:
+  dict-db-data:
+  node_modules:
+  vendor:
