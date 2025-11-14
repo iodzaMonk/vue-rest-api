@@ -22,9 +22,10 @@ const emit = defineEmits<{
                     <img src="/img/logo.svg" class="size-15" alt="logo" />
                 </Link>
             </div>
-
             <div class="flex items-center gap-3">
+                <Link href="/about" class="rounded bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">About</Link>
                 <template v-if="!isAuthenticated">
+                    
                     <button
                         type="button"
                         class="rounded bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -40,6 +41,7 @@ const emit = defineEmits<{
                         Login
                     </button>
                 </template>
+                
                 <button
                     v-else
                     type="button"

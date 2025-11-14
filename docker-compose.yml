@@ -1,0 +1,25 @@
+services:
+  db:
+    image: 9.0-debian
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: languages
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+    - "5000:5000"
+    volumes:
+    - "dict-db-data:/var/lib/mysql"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "npm install && composer install && npm run dev && php artisan serve --host=0.0.0.0 --port=5555"
+    ports:
+        - "5555:5555"
+
+  volumes:
+    dict-db-data:
+
