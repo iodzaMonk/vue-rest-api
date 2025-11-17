@@ -8,7 +8,7 @@
   <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
   <link rel="icon" href="/img/logo.svg" sizes="any">
-
+  <script src="https://www.google.com/recaptcha/enterprise.js" async defer></script>
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 

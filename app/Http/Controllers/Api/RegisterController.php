@@ -26,8 +26,7 @@ class RegisterController extends Controller
             'email' => 'required|email',
             'password' => 'required',
             'c_password' => 'required|same:password',
-            'captcha_token' => 'required|string',
-            'captcha_answer' => 'required|string',
+            'recaptcha_token' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -63,8 +62,7 @@ class RegisterController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required',
-            'captcha_token' => 'required|string',
-            'captcha_answer' => 'required|string',
+            'recaptcha_token' => 'required|string',
         ]);
 
         if ($validator->fails()) {

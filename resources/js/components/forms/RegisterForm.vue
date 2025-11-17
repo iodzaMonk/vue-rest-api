@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CaptchaField from '@/components/CaptchaField.vue';
+import RecaptchaV2 from '@/components/RecaptchaV2.vue';
 import { ensureCsrfCookie } from '@/utils/csrf';
 import axios from 'axios';
 import { reactive, ref } from 'vue';
@@ -17,17 +17,21 @@ const fields = reactive({
 
 const isSubmitting = ref(false);
 const submitError = ref('');
-const captchaToken = ref('');
-const captchaAnswer = ref('');
-const captchaRef = ref<InstanceType<typeof CaptchaField> | null>(null);
+const recaptchaToken = ref('');
+const recaptchaRef = ref<InstanceType<typeof RecaptchaV2> | null>(null);
 
 const handleSubmit = async () => {
     submitError.value = '';
     isSubmitting.value = true;
 
     try {
+        if (!recaptchaToken.value) {
+            submitError.value = 'Please complete the captcha.';
+            isSubmitting.value = false;
+            return;
+        }
         await ensureCsrfCookie();
-        const payload = { ...fields, captcha_token: captchaToken.value, captcha_answer: captchaAnswer.value };
+        const payload = { ...fields, recaptcha_token: recaptchaToken.value };
         await axios.post('/api/register', payload);
         Object.assign(fields, {
             name: '',
@@ -35,14 +39,12 @@ const handleSubmit = async () => {
             password: '',
             c_password: '',
         });
-        captchaRef.value?.refresh();
-        captchaAnswer.value = '';
+        recaptchaRef.value?.reset();
         emit('registered');
     } catch (error: any) {
         submitError.value = error?.response?.data?.message ?? 'Unable to register. Please try again.';
     } finally {
         isSubmitting.value = false;
-        captchaRef.value?.refresh();
     }
 };
 </script>
@@ -88,7 +90,7 @@ const handleSubmit = async () => {
             </label>
         </div>
 
-        <CaptchaField ref="captchaRef" v-model:token="captchaToken" v-model:answer="captchaAnswer" />
+        <RecaptchaV2 ref="recaptchaRef" v-model:token="recaptchaToken" />
 
         <p v-if="submitError" class="text-sm text-red-600">{{ submitError }}</p>
 

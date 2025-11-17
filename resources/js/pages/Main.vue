@@ -22,6 +22,13 @@ const wordPendingDeletion = ref<Word | null>(null);
 const isDeleting = ref(false);
 const authToken = ref<string | null>(typeof window === 'undefined' ? null : window.localStorage.getItem('auth_token'));
 const isAuthenticated = computed(() => Boolean(authToken.value));
+const searchTerm = ref('');
+const filteredWords = computed(() => {
+    const term = searchTerm.value.trim().toLowerCase();
+    if (!term) return words.value;
+    return words.value.filter((item) => item.word.toLowerCase().includes(term));
+});
+const currentUserId = computed(() => words.value[0]?.user_id ?? null);
 
 const setWords = (list: Word[]) => {
     words.value = list;
@@ -160,15 +167,21 @@ const handleLogout = () => {
     setToast('Logged out successfully.');
 };
 
+const handleSearch = (term: string) => {
+    searchTerm.value = term;
+};
+
 onMounted(fetchWords);
 </script>
 <template>
     <Header
         :is-authenticated="isAuthenticated"
+        :user-id="currentUserId"
         @open-register="showRegisterModal = true"
         @open-login="showLoginModal = true"
         @open-create-word="openCreateWordModal"
         @logout="handleLogout"
+        @search="handleSearch"
     />
 
     <main class="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-white to-white px-4 py-16 text-slate-800">
@@ -192,7 +205,7 @@ onMounted(fetchWords);
                     </button>
                 </div>
             </div>
-            <WordList :words="words" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="requestDeleteWord" />
+            <WordList :words="filteredWords" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="requestDeleteWord" />
         </section>
     </main>
 

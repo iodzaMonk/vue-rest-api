@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Header from '@/components/Header.vue';
+import RecaptchaV2 from '@/components/RecaptchaV2.vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { reactive, ref } from 'vue';
@@ -12,30 +12,39 @@ const fields = reactive({
 });
 const isSubmitting = ref(false);
 const submitError = ref('');
+const recaptchaToken = ref('');
+const recaptchaRef = ref<InstanceType<typeof RecaptchaV2> | null>(null);
 
 const handleSubmit = async () => {
     submitError.value = '';
     isSubmitting.value = true;
     try {
+        if (!recaptchaToken.value) {
+            submitError.value = 'Please complete the captcha.';
+            isSubmitting.value = false;
+            return;
+        }
+
         const payload = {
             name: fields.name,
             email: fields.email,
             password: fields.password,
             c_password: fields.c_password,
+            recaptcha_token: recaptchaToken.value,
         };
 
         await axios.post('/api/register', payload);
+        recaptchaRef.value?.reset();
         router.visit('/login');
     } catch (error: any) {
-        submitError.value = error?.response?.data?.message ?? 'Unable to register. Please try again.';
+        submitError.value = error?.response?.data?.message ?? error?.message ?? 'Unable to register. Please try again.';
     } finally {
         isSubmitting.value = false;
     }
 };
 </script>
-
+/
 <template>
-    <Header />
     <main class="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-white to-white px-4 py-16 text-slate-800">
         <div
             class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.12),_transparent_60%),radial-gradient(circle_at_bottom,_rgba(125,211,252,0.18),_transparent_65%)]"
@@ -113,6 +122,8 @@ const handleSubmit = async () => {
                         />
                     </label>
                 </div>
+
+                <RecaptchaV2 ref="recaptchaRef" v-model:token="recaptchaToken" />
 
                 <p class="text-center text-sm text-red-600" v-if="submitError">{{ submitError }}</p>
 

@@ -36,7 +36,7 @@ services:
     environment:
       MYSQL_DATABASE: language
       MYSQL_USER: language
-      MYSQL_PASSWORD: root
+      MYSQL_PASSWORD: 2YJemWrC6wpnfzwo
       MYSQL_ROOT_PASSWORD: root
     ports:
       - '3306:3306'

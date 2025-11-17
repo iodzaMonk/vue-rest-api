@@ -12,9 +12,9 @@ const emit = defineEmits<{
     (e: 'delete', word: Word): void;
 }>();
 
-const imageUrl = (path?: string | null) => {
+const imageUrl = (path?: string | null): string | undefined => {
     if (!path) {
-        return null;
+        return undefined;
     }
 
     if (path.startsWith('http://') || path.startsWith('https://')) {

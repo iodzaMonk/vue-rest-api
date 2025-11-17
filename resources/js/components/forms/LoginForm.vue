@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import CaptchaField from '@/components/CaptchaField.vue';
+import RecaptchaV2 from '@/components/RecaptchaV2.vue';
+import { ensureCsrfCookie } from '@/utils/csrf';
 import axios from 'axios';
 import { reactive, ref } from 'vue';
-import { ensureCsrfCookie } from '@/utils/csrf';
 
 const emit = defineEmits<{
     (e: 'logged-in'): void;
@@ -15,20 +15,23 @@ const fields = reactive({
 
 const isSubmitting = ref(false);
 const submitError = ref('');
-const captchaToken = ref('');
-const captchaAnswer = ref('');
-const captchaRef = ref<InstanceType<typeof CaptchaField> | null>(null);
+const recaptchaToken = ref('');
+const recaptchaRef = ref<InstanceType<typeof RecaptchaV2> | null>(null);
 
 const handleSubmit = async () => {
     submitError.value = '';
     isSubmitting.value = true;
 
     try {
+        if (!recaptchaToken.value) {
+            submitError.value = 'Please complete the captcha.';
+            isSubmitting.value = false;
+            return;
+        }
         await ensureCsrfCookie();
         const response = await axios.post('/api/login', {
             ...fields,
-            captcha_token: captchaToken.value,
-            captcha_answer: captchaAnswer.value,
+            recaptcha_token: recaptchaToken.value,
         });
         const token = response.data?.data?.token ?? '';
         localStorage.setItem('auth_token', token);
@@ -36,14 +39,12 @@ const handleSubmit = async () => {
             axios.defaults.headers.common.Authorization = `Bearer ${token}`;
         }
         Object.assign(fields, { email: '', password: '' });
-        captchaAnswer.value = '';
-        captchaRef.value?.refresh();
+        recaptchaRef.value?.reset();
         emit('logged-in');
     } catch (error: any) {
         submitError.value = error?.response?.data?.message ?? 'Invalid credentials. Please try again.';
     } finally {
         isSubmitting.value = false;
-        captchaRef.value?.refresh();
     }
 };
 </script>
@@ -52,7 +53,7 @@ const handleSubmit = async () => {
     <form class="grid gap-6" @submit.prevent="handleSubmit">
         <div class="grid gap-4 md:grid-cols-2">
             <label class="flex flex-col gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</span>
+                <span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Email</span>
                 <input
                     v-model="fields.email"
                     type="email"
@@ -61,7 +62,7 @@ const handleSubmit = async () => {
                 />
             </label>
             <label class="flex flex-col gap-2">
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Password</span>
+                <span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Password</span>
                 <input
                     v-model="fields.password"
                     type="password"
@@ -71,7 +72,7 @@ const handleSubmit = async () => {
             </label>
         </div>
 
-        <CaptchaField ref="captchaRef" v-model:token="captchaToken" v-model:answer="captchaAnswer" />
+        <RecaptchaV2 ref="recaptchaRef" v-model:token="recaptchaToken" />
 
         <p v-if="submitError" class="text-sm text-red-600">{{ submitError }}</p>
 
@@ -79,7 +80,7 @@ const handleSubmit = async () => {
             <button
                 type="submit"
                 :disabled="isSubmitting"
-                class="rounded-full bg-sky-500 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300"
+                class="rounded-full bg-sky-500 px-6 py-3 text-sm font-semibold tracking-wide text-white uppercase transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300"
             >
                 {{ isSubmitting ? 'Signing in...' : 'Login' }}
             </button>

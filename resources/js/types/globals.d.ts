@@ -4,6 +4,7 @@ import { AppPageProps } from '@/types/index';
 declare module 'vite/client' {
     interface ImportMetaEnv {
         readonly VITE_APP_NAME: string;
+        readonly VITE_RECAPTCHA_SITE_KEY?: string;
         [key: string]: string | boolean | undefined;
     }
 
@@ -24,3 +25,18 @@ declare module 'vue' {
         $headManager: ReturnType<typeof createHeadManager>;
     }
 }
+
+interface Grecaptcha {
+    ready: (callback: () => void) => void;
+    execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    render: (container: HTMLElement | string, parameters: Record<string, unknown>) => number;
+    reset: (opt_widget_id?: number) => void;
+}
+
+declare global {
+    interface Window {
+        grecaptcha?: Grecaptcha;
+    }
+}
+
+export {};

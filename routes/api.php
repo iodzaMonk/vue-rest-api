@@ -4,11 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WordController;
 use App\Http\Controllers\Api\RegisterController;
-use App\Http\Controllers\Api\CaptchaController;
 
 Route::post('register', [RegisterController::class, 'register']);
 Route::post('login', [RegisterController::class, 'login']);
-Route::get('captcha', [CaptchaController::class, 'generate']);
+Route::get('words/autocomplete', [WordController::class, 'autocomplete'])->name('words.autocomplete');
 Route::middleware('auth:sanctum')->group(function () {
   Route::get('words', [WordController::class, 'index']);
   Route::get('words/{id}', [WordController::class, 'show']);

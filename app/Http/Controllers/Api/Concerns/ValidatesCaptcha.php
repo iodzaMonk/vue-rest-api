@@ -2,27 +2,19 @@
 
 namespace App\Http\Controllers\Api\Concerns;
 
+use App\Support\RecaptchaVerifier;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 trait ValidatesCaptcha
 {
     protected function validateCaptcha(Request $request): bool
     {
-        $token = (string) $request->input('captcha_token');
-        $answer = trim((string) $request->input('captcha_answer'));
+        $token = (string) $request->input('recaptcha_token', $request->input('g-recaptcha-response'));
 
-        if ($token === '' || $answer === '') {
+        if ($token === '') {
             return false;
         }
 
-        $cacheKey = 'captcha_' . $token;
-        $expected = Cache::pull($cacheKey);
-
-        if ($expected === null) {
-            return false;
-        }
-
-        return strcmp((string) $expected, $answer) === 0;
+        return app(RecaptchaVerifier::class)->verify($token, $request->ip());
     }
 }

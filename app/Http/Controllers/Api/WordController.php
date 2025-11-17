@@ -38,15 +38,25 @@ class WordController extends Controller
             'example_sentence' => 'required|string',
             'difficulty' => 'required|in:easy,medium,hard',
             'image' => 'nullable|image',
-            'captcha_token' => 'required|string',
-            'captcha_answer' => 'required|string',
+            'recaptcha_token' => 'required|string',
         ]);
 
         if (!$this->validateCaptcha($request)) {
             return $this->sendError('Invalid captcha.', [], 422);
         }
 
-        unset($validated['captcha_token'], $validated['captcha_answer']);
+        unset($validated['recaptcha_token']);
+
+        $validated['word'] = trim($validated['word']);
+
+        $existing = $request->user()
+            ->words()
+            ->whereRaw('LOWER(TRIM(word)) = ?', [mb_strtolower($validated['word'])])
+            ->first();
+
+        if ($existing) {
+            return $this->sendError('You already saved this word.', [], 422);
+        }
 
         $validated['image'] = $this->handleImageUpload($request);
 
@@ -155,5 +165,19 @@ class WordController extends Controller
         if (File::exists($fullPath)) {
             File::delete($fullPath);
         }
+    }
+
+    public function autocomplete(Request $request)
+    {
+        $query = $request->input('query', '');
+        $userId = $request->input('user_id') ?: optional($request->user())->id;
+
+        $words = Word::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->where('word', 'LIKE', trim($query) . '%')
+            ->limit(10)
+            ->pluck('word');
+
+        return $this->sendResponse($words, 'Autocomplete results retrieved successfully.');
     }
 }

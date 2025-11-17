@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import SearchBar from '../pages/SearchBar.vue';
 
-defineProps<{
+const props = defineProps<{
     isAuthenticated: boolean;
+    userId?: string | number | null;
 }>();
 
 const emit = defineEmits<{
@@ -10,6 +12,7 @@ const emit = defineEmits<{
     (e: 'open-login'): void;
     (e: 'open-create-word'): void;
     (e: 'logout'): void;
+    (e: 'search', term: string): void;
 }>();
 </script>
 
@@ -25,7 +28,6 @@ const emit = defineEmits<{
             <div class="flex items-center gap-3">
                 <Link href="/about" class="rounded bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">About</Link>
                 <template v-if="!isAuthenticated">
-                    
                     <button
                         type="button"
                         class="rounded bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -41,7 +43,7 @@ const emit = defineEmits<{
                         Login
                     </button>
                 </template>
-                
+
                 <button
                     v-else
                     type="button"
@@ -50,6 +52,7 @@ const emit = defineEmits<{
                 >
                     Logout
                 </button>
+                <SearchBar :user-id="props.userId ?? null" @search="emit('search', $event)" />
             </div>
         </div>
     </header>

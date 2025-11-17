@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CaptchaField from '@/components/CaptchaField.vue';
+import RecaptchaV2 from '@/components/RecaptchaV2.vue';
 import type { Word } from '@/types/word';
 import { ensureCsrfCookie } from '@/utils/csrf';
 import axios from 'axios';
@@ -48,9 +48,8 @@ const imageFile = ref<File | null>(null);
 const imagePreview = ref<string | null>(null);
 const isDragging = ref(false);
 const shouldRemoveExistingImage = ref(false);
-const captchaToken = ref('');
-const captchaAnswer = ref('');
-const captchaRef = ref<InstanceType<typeof CaptchaField> | null>(null);
+const recaptchaToken = ref('');
+const recaptchaRef = ref<InstanceType<typeof RecaptchaV2> | null>(null);
 
 const title = computed(() => (props.mode === 'edit' ? 'Edit word' : 'Add a new word'));
 const subtitle = computed(() =>
@@ -83,9 +82,8 @@ const resetForm = () => {
     imagePreview.value = null;
     shouldRemoveExistingImage.value = false;
     if (props.mode === 'create') {
-        captchaAnswer.value = '';
-        captchaToken.value = '';
-        captchaRef.value?.refresh?.();
+        recaptchaToken.value = '';
+        recaptchaRef.value?.reset?.();
     }
 };
 
@@ -108,10 +106,6 @@ const applyWordToFields = (word: Word | null) => {
     revokePreview();
     imagePreview.value = storageUrl(word.image);
     shouldRemoveExistingImage.value = false;
-    if (props.mode === 'create') {
-        captchaAnswer.value = '';
-        captchaToken.value = '';
-    }
 };
 
 watch(
@@ -194,7 +188,7 @@ const onDrop = (event: DragEvent) => {
     }
 };
 
-const buildFormData = () => {
+const buildFormData = (recaptcha?: string) => {
     const formData = new FormData();
     Object.entries(fields).forEach(([key, value]) => {
         formData.append(key, value);
@@ -208,9 +202,8 @@ const buildFormData = () => {
         formData.append('remove_image', '1');
     }
 
-    if (props.mode === 'create') {
-        formData.append('captcha_token', captchaToken.value);
-        formData.append('captcha_answer', captchaAnswer.value);
+    if (props.mode === 'create' && recaptcha) {
+        formData.append('recaptcha_token', recaptcha);
     }
 
     return formData;
@@ -227,8 +220,22 @@ const handleSubmit = async () => {
     }
 
     try {
+        if (props.mode === 'create' && !recaptchaToken.value) {
+            submitError.value = 'Please complete the captcha.';
+            isSubmitting.value = false;
+            return;
+        }
+
+        const recaptcha = props.mode === 'create' ? recaptchaToken.value : undefined;
+        if (props.mode === 'create') {
+            // ensure we have the freshest token
+            if (!recaptcha) {
+                submitError.value = 'Please complete the captcha.';
+                return;
+            }
+        }
         await ensureCsrfCookie();
-        const formData = buildFormData();
+        const formData = buildFormData(recaptcha);
         const config = {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -258,7 +265,8 @@ const handleSubmit = async () => {
     } finally {
         isSubmitting.value = false;
         if (props.mode === 'create') {
-            captchaRef.value?.refresh?.();
+            recaptchaToken.value = '';
+            recaptchaRef.value?.reset?.();
         }
     }
 };
@@ -337,13 +345,8 @@ const handleSubmit = async () => {
                         </button>
                     </div>
                 </div>
-                <CaptchaField
-                    v-if="mode === 'create'"
-                    ref="captchaRef"
-                    v-model:token="captchaToken"
-                    v-model:answer="captchaAnswer"
-                    class="md:col-span-2"
-                />
+
+                <RecaptchaV2 v-if="mode === 'create'" ref="recaptchaRef" v-model:token="recaptchaToken" class="md:col-span-2" />
             </div>
 
             <label class="flex flex-col gap-2">

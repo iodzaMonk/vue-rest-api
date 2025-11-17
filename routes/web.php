@@ -11,6 +11,7 @@ Route::get('/about', function () {
     return Inertia::render('About');
 })->name('about');
 
+
 Route::fallback(function () {
     return redirect()->route('home');
 });
