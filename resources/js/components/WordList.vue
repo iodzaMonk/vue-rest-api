@@ -8,6 +8,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+    (e: 'view', word: Word): void;
     (e: 'edit', word: Word): void;
     (e: 'delete', word: Word): void;
 }>();
@@ -39,7 +40,11 @@ const imageUrl = (path?: string | null): string | undefined => {
             <article
                 v-for="word in props.words"
                 :key="word.id"
-                class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-lg ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-xl"
+                class="flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-lg ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-xl"
+                role="button"
+                tabindex="0"
+                @click="emit('view', word)"
+                @keydown.enter.prevent="emit('view', word)"
             >
                 <div v-if="imageUrl(word.image)" class="relative h-48 w-full overflow-hidden bg-slate-100">
                     <img :src="imageUrl(word.image)" :alt="`Image for ${word.word}`" class="h-full w-full object-cover" />
@@ -67,14 +72,14 @@ const imageUrl = (path?: string | null): string | undefined => {
                         <button
                             type="button"
                             class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-slate-200 focus-visible:outline-none"
-                            @click="emit('delete', word)"
+                            @click.stop="emit('delete', word)"
                         >
                             Delete
                         </button>
                         <button
                             type="button"
                             class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:outline-none"
-                            @click="emit('edit', word)"
+                            @click.stop="emit('edit', word)"
                         >
                             Edit
                         </button>

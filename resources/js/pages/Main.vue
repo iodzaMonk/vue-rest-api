@@ -4,6 +4,7 @@ import LoginForm from '@/components/forms/LoginForm.vue';
 import RegisterForm from '@/components/forms/RegisterForm.vue';
 import Header from '@/components/Header.vue';
 import ModalShell from '@/components/ModalShell.vue';
+import WordDetail from '@/components/WordDetail.vue';
 import WordForm from '@/components/WordForm.vue';
 import WordList from '@/components/WordList.vue';
 import type { Word } from '@/types/word';
@@ -20,6 +21,7 @@ const editingWord = ref<Word | null>(null);
 const toastMessage = ref('');
 const wordPendingDeletion = ref<Word | null>(null);
 const isDeleting = ref(false);
+const wordDetail = ref<Word | null>(null);
 const authToken = ref<string | null>(typeof window === 'undefined' ? null : window.localStorage.getItem('auth_token'));
 const isAuthenticated = computed(() => Boolean(authToken.value));
 const searchTerm = ref('');
@@ -92,6 +94,14 @@ const startEditing = (word: Word) => {
         return;
     }
     editingWord.value = word;
+};
+
+const openWordDetail = (word: Word) => {
+    wordDetail.value = word;
+};
+
+const closeWordDetail = () => {
+    wordDetail.value = null;
 };
 
 const handleWordUpdated = (word: Word) => {
@@ -205,7 +215,14 @@ onMounted(fetchWords);
                     </button>
                 </div>
             </div>
-            <WordList :words="filteredWords" :is-loading="isLoading" :error-message="errorMessage" @edit="startEditing" @delete="requestDeleteWord" />
+            <WordList
+                :words="filteredWords"
+                :is-loading="isLoading"
+                :error-message="errorMessage"
+                @view="openWordDetail"
+                @edit="startEditing"
+                @delete="requestDeleteWord"
+            />
         </section>
     </main>
 
@@ -242,5 +259,9 @@ onMounted(fetchWords);
             @confirm="confirmDeleteWord"
             @cancel="wordPendingDeletion = null"
         />
+    </ModalShell>
+
+    <ModalShell v-if="wordDetail" :title="wordDetail.word" @close="closeWordDetail">
+        <WordDetail :word="wordDetail" />
     </ModalShell>
 </template>

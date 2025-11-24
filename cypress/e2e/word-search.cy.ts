@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe('Word search and autocomplete', () => {
     beforeEach(() => {
         cy.fixture('words').then((words) => {

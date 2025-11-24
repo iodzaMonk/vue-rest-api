@@ -37,8 +37,8 @@ describe('Word deletion flow', () => {
     });
 });
 
-it('Update', function() {
-    cy.visit('http://127.0.0.1:8000/')
+it('Update', function () {
+    cy.visit('http://127.0.0.1:8000/');
     cy.get('#app button.rounded.text-white').click();
     cy.get('#app input[placeholder="John Doe"]').click();
     cy.get('#app input[placeholder="John Doe"]').type('test');
@@ -82,5 +82,4 @@ it('Update', function() {
     cy.get('#app input[placeholder="serendipity"]').type('elephant');
     cy.get('#app button.disabled\\:bg-slate-300').click();
     cy.get('#app div.grid').click();
-    
 });
